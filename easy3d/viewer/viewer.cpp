@@ -51,28 +51,28 @@
 #include <easy3d/renderer/shader_program.h>
 #include <easy3d/renderer/shader_manager.h>
 #include <easy3d/renderer/transform.h>
-#include <easy3d/renderer/shapes.h>
+#include <easy3d/renderer/shape.h>
 #include <easy3d/renderer/camera.h>
 #include <easy3d/renderer/manipulated_camera_frame.h>
 #include <easy3d/renderer/key_frame_interpolator.h>
 #include <easy3d/renderer/framebuffer_object.h>
 #include <easy3d/renderer/opengl_util.h>
 #include <easy3d/renderer/opengl_error.h>
-#include <easy3d/renderer/setting.h>
 #include <easy3d/renderer/text_renderer.h>
 #include <easy3d/renderer/texture_manager.h>
-#include <easy3d/fileio/resources.h>
 #include <easy3d/fileio/point_cloud_io.h>
 #include <easy3d/fileio/graph_io.h>
 #include <easy3d/fileio/surface_mesh_io.h>
 #include <easy3d/fileio/poly_mesh_io.h>
 #include <easy3d/fileio/ply_reader_writer.h>
 #include <easy3d/fileio/point_cloud_io_ptx.h>
-#include <easy3d/util/dialogs.h>
+#include <easy3d/util/dialog.h>
 #include <easy3d/util/file_system.h>
 #include <easy3d/util/logging.h>
 #include <easy3d/util/timer.h>
 #include <easy3d/util/string.h>
+#include <easy3d/util/resource.h>
+#include <easy3d/util/setting.h>
 
 
 // To have the same shortcut behavior on macOS and other platforms (i.e., Windows, Linux)
@@ -106,7 +106,7 @@ namespace easy3d {
         , is_animating_(false)
         , samples_(0)
         , full_screen_(full_screen)
-        , background_color_(0.9f, 0.9f, 1.0f, 1.0f)
+        , background_color_(setting::background_color)
         , process_events_(true)
         , texter_(nullptr)
         , pressed_button_(-1)
@@ -131,7 +131,7 @@ namespace easy3d {
 
         // Initialize logging (if it has not been initialized yet)
         if (!logging::is_initialized())
-            logging::initialize();
+            logging::initialize(false, true, true, false, "default", 9);
 
         // create and setup window
         window_ = create_window(title, samples, gl_major, gl_minor, full_screen, resizable,
@@ -522,6 +522,7 @@ namespace easy3d {
     void Viewer::clear_scene() {
         for (auto m : models_) {
             delete m->renderer();
+            delete m->manipulator();
             delete m;
         }
         models_.clear();
@@ -572,6 +573,25 @@ namespace easy3d {
 #endif
         glfwSetWindowSize(window_, w, h);
     }
+
+
+	int Viewer::framebuffer_width() const {
+		int w, h;
+		glfwGetFramebufferSize(window_, &w, &h);
+		return w;
+	}
+
+
+	int Viewer::framebuffer_height() const {
+		int w, h;
+		glfwGetFramebufferSize(window_, &w, &h);
+		return h;
+	}
+
+
+	void Viewer::framebuffer_size(int& w, int& h) const {
+		glfwGetFramebufferSize(window_, &w, &h);
+	}
 
 
     void Viewer::update() const {
@@ -814,9 +834,9 @@ namespace easy3d {
         } else if (key == GLFW_KEY_T && modifiers == EASY3D_MOD_CONTROL) {
             show_camera_path_ = !show_camera_path_;
             if (show_camera_path_) {
-                const int count = kfi_->number_of_keyframes();
+                const std::size_t count = kfi_->number_of_keyframes();
                 float radius = camera_->sceneRadius();
-                for (int i=0; i<count; ++i) {
+                for (std::size_t i=0; i<count; ++i) {
                     radius = std::max( radius,
                             distance(camera_->sceneCenter(), kfi_->keyframe(i).position())
                     );
@@ -885,15 +905,15 @@ namespace easy3d {
                 delete_model(current_model());
         } else if (key == GLFW_KEY_E && modifiers == 0) {
             if (current_model()) {
-                auto *edges = current_model()->renderer()->get_lines_drawable("edges");
-                if (edges)
-                    edges->set_visible(!edges->is_visible());
+                auto *drawable = current_model()->renderer()->get_lines_drawable("edges");
+                if (drawable)
+					drawable->set_visible(!drawable->is_visible());
             }
         } else if (key == GLFW_KEY_V && modifiers == 0) {
             if (current_model()) {
-                auto vertices = current_model()->renderer()->get_points_drawable("vertices");
-                if (vertices)
-                    vertices->set_visible(!vertices->is_visible());
+                auto drawable = current_model()->renderer()->get_points_drawable("vertices");
+                if (drawable)
+					drawable->set_visible(!drawable->is_visible());
             }
         } else if (key == GLFW_KEY_B && modifiers == 0) {
             SurfaceMesh *mesh = dynamic_cast<SurfaceMesh *>(current_model());
@@ -1083,7 +1103,6 @@ namespace easy3d {
 
             /* Process events once more */
             glfwPollEvents();
-            cleanup();
             return EXIT_SUCCESS;
         }
         catch (const std::exception &e) {
@@ -1104,7 +1123,7 @@ namespace easy3d {
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
 
-        glClearDepthf(1.0f);
+        glClearDepth(1.0f);
         glClearColor(background_color_[0], background_color_[1], background_color_[2], background_color_[3]);
 
         // camera is manipulated by the mouse, working in the screen coordinate system
@@ -1246,10 +1265,7 @@ namespace easy3d {
             }
         }
 
-        auto renderer = new Renderer(model, create);
-        model->set_renderer(renderer);
-        auto manipulator = new Manipulator(model);
-        model->set_manipulator(manipulator);
+        model->set_renderer(new Renderer(model, create));
 
         int pre_idx = model_idx_;
         models_.push_back(model);
@@ -1497,16 +1513,16 @@ namespace easy3d {
             float base = 0.5f;   // the cylinder length, relative to the allowed region
             float head = 0.2f;   // the cone length, relative to the allowed region
             std::vector<vec3> points, normals, colors;
-            shapes::create_cylinder(0.03, 10, vec3(0, 0, 0), vec3(base, 0, 0), vec3(1, 0, 0), points, normals, colors);
-            shapes::create_cylinder(0.03, 10, vec3(0, 0, 0), vec3(0, base, 0), vec3(0, 1, 0), points, normals, colors);
-            shapes::create_cylinder(0.03, 10, vec3(0, 0, 0), vec3(0, 0, base), vec3(0, 0, 1), points, normals, colors);
-            shapes::create_cone(0.06, 20, vec3(base, 0, 0), vec3(base + head, 0, 0), vec3(1, 0, 0), points, normals,
+            shape::create_cylinder(0.03, 10, vec3(0, 0, 0), vec3(base, 0, 0), vec3(1, 0, 0), points, normals, colors);
+            shape::create_cylinder(0.03, 10, vec3(0, 0, 0), vec3(0, base, 0), vec3(0, 1, 0), points, normals, colors);
+            shape::create_cylinder(0.03, 10, vec3(0, 0, 0), vec3(0, 0, base), vec3(0, 0, 1), points, normals, colors);
+            shape::create_cone(0.06, 20, vec3(base, 0, 0), vec3(base + head, 0, 0), vec3(1, 0, 0), points, normals,
                                  colors);
-            shapes::create_cone(0.06, 20, vec3(0, base, 0), vec3(0, base + head, 0), vec3(0, 1, 0), points, normals,
+            shape::create_cone(0.06, 20, vec3(0, base, 0), vec3(0, base + head, 0), vec3(0, 1, 0), points, normals,
                                  colors);
-            shapes::create_cone(0.06, 20, vec3(0, 0, base), vec3(0, 0, base + head), vec3(0, 0, 1), points, normals,
+            shape::create_cone(0.06, 20, vec3(0, 0, base), vec3(0, 0, base + head), vec3(0, 0, 1), points, normals,
                                  colors);
-            shapes::create_sphere(vec3(0, 0, 0), 0.06, 20, 20, vec3(0, 1, 1), points, normals, colors);
+            shape::create_sphere(vec3(0, 0, 0), 0.06, 20, 20, vec3(0, 1, 1), points, normals, colors);
             const_cast<Viewer*>(this)->drawable_axes_ = new TrianglesDrawable("corner_axes");
             drawable_axes_->update_vertex_buffer(points);
             drawable_axes_->update_normal_buffer(normals);
@@ -1527,7 +1543,7 @@ namespace easy3d {
 
         // To make the axis appear over other objects: reserve a tiny bit of the
         // front depth range. NOTE: do remember to restore it later.
-        glDepthRangef(0, 0.01f);
+        glDepthRange(0, 0.01f);
 
         const mat4 &proj = transform::ortho(-1, 1, -1, 1, -1, 1);
         const mat4 &view = camera_->orientation().inverse().matrix();
@@ -1558,6 +1574,7 @@ namespace easy3d {
                 ->set_uniform("highlight", false)
                 ->set_uniform("clippingPlaneEnabled", false)
                 ->set_uniform("selected", false)
+                ->set_uniform("highlight_color", setting::highlight_color)
                 ->set_uniform("use_texture", false);
         drawable_axes_->gl_draw();
         program->release();
@@ -1565,7 +1582,7 @@ namespace easy3d {
         // restore
         glScissor(scissor[0], scissor[1], scissor[2], scissor[3]);
         glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
-        glDepthRangef(0.0f, 1.0f);
+        glDepthRange(0.0f, 1.0f);
     }
 
 
@@ -1633,14 +1650,19 @@ namespace easy3d {
         // ------------- draw the picking region with transparency  ---------------
 
         if (pressed_button_ == GLFW_MOUSE_BUTTON_LEFT && modifiers_ == EASY3D_MOD_CONTROL) {
-            const Rect rect(mouse_pressed_x_, mouse_current_x_, mouse_pressed_y_, mouse_current_y_);
+            const Rect rect(
+                static_cast<float>(mouse_pressed_x_), 
+                static_cast<float>(mouse_current_x_), 
+                static_cast<float>(mouse_pressed_y_), 
+                static_cast<float>(mouse_current_y_)
+            );
             if (rect.width() > 0 || rect.height() > 0) {
                 // draw the boundary of the rect
-                shapes::draw_quad_wire(rect, vec4(0.0f, 0.0f, 1.0f, 1.0f), width(), height(), -1.0f);
+                shape::draw_quad_wire(rect, vec4(0.0f, 0.0f, 1.0f, 1.0f), width(), height(), -1.0f);
                 // draw the transparent face
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                shapes::draw_quad_filled(rect, vec4(0.0f, 0.0f, 1.0f, 0.2f), width(), height(), -0.9f);
+                shape::draw_quad_filled(rect, vec4(0.0f, 0.0f, 1.0f, 0.2f), width(), height(), -0.9f);
                 glDisable(GL_BLEND);
             }
         }
@@ -1669,7 +1691,7 @@ namespace easy3d {
 
             float depth = 1.0f;
             glPixelStorei(GL_PACK_ALIGNMENT, 1);    easy3d_debug_log_gl_error;
-            glReadPixels(x, y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth); easy3d_debug_log_gl_error;
+            glReadPixels(static_cast<int>(x), static_cast<int>(y), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth); easy3d_debug_log_gl_error;
             if (depth < 1.0 && p.z < 1.0 && std::abs(depth - p.z) < 0.001)
                 texter->draw(std::to_string(f.idx()), x, p.y * dpi_scaling_, 16, font_id, color);
         }
@@ -1687,7 +1709,7 @@ namespace easy3d {
 
             float depth = 1.0f;
             glPixelStorei(GL_PACK_ALIGNMENT, 1);    easy3d_debug_log_gl_error;
-            glReadPixels(x, y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth); easy3d_debug_log_gl_error;
+            glReadPixels(static_cast<int>(x), static_cast<int>(y), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth); easy3d_debug_log_gl_error;
             if (depth < 1.0 && p.z < 1.0 && std::abs(depth - p.z) < 0.001)
                 texter->draw(std::to_string(id), x, p.y * dpi_scaling_, 16, font_id, color);
         }

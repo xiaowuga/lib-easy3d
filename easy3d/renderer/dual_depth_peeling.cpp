@@ -33,13 +33,12 @@
 #include <easy3d/renderer/opengl_error.h>
 #include <easy3d/renderer/shader_manager.h>
 #include <easy3d/renderer/shader_program.h>
-#include <easy3d/renderer/shapes.h>
+#include <easy3d/renderer/shape.h>
 #include <easy3d/renderer/camera.h>
-#include <easy3d/renderer/setting.h>
 #include <easy3d/renderer/transform.h>
 #include <easy3d/renderer/clipping_plane.h>
 #include <easy3d/renderer/texture.h>
-#include <easy3d/util/file_system.h>
+#include <easy3d/util/setting.h>
 
 //#define SAVE_ITERMEDIATE_FBO
 //#define SHOW_DEBUG_INFO
@@ -196,10 +195,8 @@ namespace easy3d {
             for (auto d : surfaces) {
                 if (d->is_visible()) {
                     program->set_uniform("MANIP", d->manipulated_matrix());
-                    if (setting::clipping_plane) {
-                        setting::clipping_plane->set_program(program);
-                        setting::clipping_plane->set_discard_primitives(program, d->plane_clip_discard_primitive());
-                    }
+                    ClippingPlane::instance()->set_program(program);
+                    ClippingPlane::instance()->set_discard_primitives(program, d->plane_clip_discard_primitive());
                     d->gl_draw();
                 }
             }
@@ -257,11 +254,11 @@ namespace easy3d {
                             ->set_uniform("Alpha", d->opacity())
                             ->set_uniform("per_vertex_color", d->coloring_method() != State::UNIFORM_COLOR && d->color_buffer())
                             ->set_uniform("default_color", d->color())
-                            ->set_uniform("selected", d->is_selected());
-                    if (setting::clipping_plane) {
-                        setting::clipping_plane->set_program(program);
-                        setting::clipping_plane->set_discard_primitives(program, d->plane_clip_discard_primitive());
-                    }
+                            ->set_uniform("selected", d->is_selected())
+                            ->set_uniform("highlight_color", setting::highlight_color);
+
+                    ClippingPlane::instance()->set_program(program);
+                    ClippingPlane::instance()->set_discard_primitives(program, d->plane_clip_discard_primitive());
 
                     bool use_texture = (d->texture() && (d->coloring_method() == State::SCALAR_FIELD || d->coloring_method() == State::TEXTURED));
                     program->set_uniform("use_texture", use_texture);
@@ -434,7 +431,7 @@ namespace easy3d {
 
         program->bind();
         program->bind_texture("TempTex", fbo_->color_texture(BackTemp), 0);
-        shapes::draw_full_screen_quad(ShaderProgram::POSITION, ShaderProgram::TEXCOORD, 0.0f);
+        shape::draw_full_screen_quad(ShaderProgram::POSITION, ShaderProgram::TEXCOORD, 0.0f);
         program->release_texture();
         program->release();
 
@@ -476,7 +473,7 @@ namespace easy3d {
         program->bind();
         program->bind_texture("FrontBlenderTex", fbo_->color_texture(front_source_), 0);
         program->bind_texture("BackBlenderTex", fbo_->color_texture(Back), 1);
-        shapes::draw_full_screen_quad(ShaderProgram::POSITION, ShaderProgram::TEXCOORD, 0.0f);
+        shape::draw_full_screen_quad(ShaderProgram::POSITION, ShaderProgram::TEXCOORD, 0.0f);
         program->release_texture();
         program->release();
     }

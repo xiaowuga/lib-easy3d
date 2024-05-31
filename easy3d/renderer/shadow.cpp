@@ -34,9 +34,8 @@
 #include <easy3d/renderer/frustum.h>
 #include <easy3d/renderer/drawable_lines.h>
 #include <easy3d/renderer/drawable_triangles.h>
-#include <easy3d/renderer/setting.h>
 #include <easy3d/renderer/clipping_plane.h>
-
+#include <easy3d/util/setting.h>
 
 // for debugging
 //#define SHOW_SHADOW_MAP_AND_LIGHT_FRUSTUM
@@ -55,10 +54,10 @@ namespace easy3d {
         , light_frustum_(nullptr)
         , shadow_map_size_(1024)
         , virtual_background_(true)
-        , virtual_background_color_(1.0f, 1.0f, 1.0f)
+        , virtual_background_color_(setting::background_color)
         , virtual_background_drawable_(nullptr)
-        , light_distance_(50.0f)
-        , darkness_(0.6f)
+        , light_distance_(setting::effect_shadow_light_distance)
+        , darkness_(setting::effect_shadow_darkness)
     {
     }
 
@@ -165,8 +164,8 @@ namespace easy3d {
         const float offset_y = 40.0f;
         const float size = 200.0f;
         const Rect quad(offset_x * dpi_scale, (offset_x + size) * dpi_scale, offset_y * dpi_scale, (offset_y + size) * dpi_scale);
-        shapes::draw_depth_texture(quad, fbo_->depth_texture(), w, h, -0.9f);
-        shapes::draw_quad_wire(quad, vec4(1.0f, 0.0f, 0.0f, 1.0f), w, h, -0.99f);   easy3d_debug_log_gl_error;
+        shape::draw_depth_texture(quad, fbo_->depth_texture(), w, h, -0.9f);
+        shape::draw_quad_wire(quad, vec4(1.0f, 0.0f, 0.0f, 1.0f), w, h, -0.99f);   easy3d_debug_log_gl_error;
         draw_light_frustum();		easy3d_debug_log_gl_error;
     #endif
     }
@@ -191,10 +190,8 @@ namespace easy3d {
         program->set_uniform("MVP", light_projection_matrix_ * light_view_matrix_);	easy3d_debug_log_gl_error;
         for (auto d : surfaces) {
             if (d->is_visible()) {
-                if (setting::clipping_plane) {
-                    setting::clipping_plane->set_program(program);
-                    setting::clipping_plane->set_discard_primitives(program, d->plane_clip_discard_primitive());
-                }
+                ClippingPlane::instance()->set_program(program);
+                ClippingPlane::instance()->set_discard_primitives(program, d->plane_clip_discard_primitive());
                 d->gl_draw();
             }
         }
@@ -248,12 +245,11 @@ namespace easy3d {
                         ->set_uniform("default_color", d->color())
                         ->set_uniform("per_vertex_color", d->coloring_method() != State::UNIFORM_COLOR && d->color_buffer())
                         ->set_uniform("is_background", false)
-                        ->set_uniform("selected", d->is_selected());
+                        ->set_uniform("selected", d->is_selected())
+                        ->set_uniform("highlight_color", setting::highlight_color);
 
-                if (setting::clipping_plane) {
-                    setting::clipping_plane->set_program(program);
-                    setting::clipping_plane->set_discard_primitives(program, d->plane_clip_discard_primitive());
-                }
+                ClippingPlane::instance()->set_program(program);
+                ClippingPlane::instance()->set_discard_primitives(program, d->plane_clip_discard_primitive());
 
                 d->gl_draw();
             }

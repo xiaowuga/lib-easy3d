@@ -43,6 +43,21 @@ namespace easy3d {
      *      manipulate this object. In this implementation, the origin of the manipulated frame is always at
      *      the center of the object.
      * \class Manipulator easy3d/renderer/manipulator.h
+     *
+     * The following code shows how to use this manipulator:
+     * \code
+     *      // create a manipulator and attach it to the model
+     *      model->set_manipulator(new Manipulator(model));
+     *      // connect the manipulator's signal to the viewer's update function to automatically update rendering.
+     *      model->manipulator()->frame()->modified.connect(viewer, static_cast<void (Viewer::*)(void)>(&Viewer::update));
+     *      // then in the mouse event, call the following functions:
+     *      model->manipulator()->frame()->action_rotate(x, y, dx, dy, camera, axis); // axis = NONE for free rotation
+     *      model->manipulator()->frame()->action_translate(x, y, dx, dy, camera, axis); // axis = NONE for free translation
+     * \endcode
+     * \code
+     *      // don't forget to delete the manipulator when the model is deleted
+     *      delete model->manipulator();
+     * \endcode
      */
     class Manipulator {
     public:
@@ -61,11 +76,12 @@ namespace easy3d {
         const ManipulatedFrame *frame() const { return frame_; }
 
         /// Returns the transformation introduced by this manipulator.
-        /// \note Rotation is performed around the 'center' of the object.
+        /// \note Rotation is performed around object 'center'. Thus the returned transformation is different from
+        ///     'frame()->matrix()'. Their relation is: 'matrix() == frame()->matrix() * mat4::translation(-center)'.
         mat4 matrix() const;
 
         /// Draws the manipulated frame.
-        void draw_frame(Camera* cam) const;
+        void draw_frame(const Camera* cam) const;
 
     protected:
         Model *model_; // the model to be manipulated

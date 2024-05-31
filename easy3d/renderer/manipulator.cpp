@@ -28,7 +28,7 @@
 #include <easy3d/renderer/manipulator.h>
 #include <easy3d/core/model.h>
 #include <easy3d/renderer/manipulated_frame.h>
-#include <easy3d/renderer/shapes.h>
+#include <easy3d/renderer/shape.h>
 #include <easy3d/renderer/camera.h>
 #include <easy3d/renderer/drawable_lines.h>
 
@@ -70,13 +70,13 @@ namespace easy3d {
             //  (3) a pure translation (this is the real translation should be applied to the object).  
             // So we have to compensate the extra translation.
             const vec3 &center = model_->bounding_box().center();
-            return mat * mat4::translation(-center);
+            return  mat * mat4::translation(-center);
         } else
             return mat4::identity();
     }
 
 
-    void Manipulator::draw_frame( Camera *cam) const {
+    void Manipulator::draw_frame(const Camera *cam) const {
         if (!model_ || !cam)
             return;
 
@@ -87,7 +87,7 @@ namespace easy3d {
         const Box3 box = model_->bounding_box(false);
         const vec3 &center = box.center();
         auto manip = matrix() * mat4::translation(center) * mat4::scale(box.range(0), box.range(1), box.range(2), 1.0f);
-        shapes::draw_box_wire(drawable_model_bbox_, cam->modelViewProjectionMatrix(), manip, true);
+        shape::draw_box_wire(drawable_model_bbox_, cam->modelViewProjectionMatrix(), manip, true);
     }
 
 }

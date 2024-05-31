@@ -1,9 +1,6 @@
-cmake_minimum_required(VERSION 3.12)
+get_filename_component(module ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 
-project(3rd_poisson)
-
-
-set(poisson_HEADERS
+set(${module}_HEADERS
     Allocator.h
     Array.h
     BinaryNode.h
@@ -46,29 +43,20 @@ set(poisson_HEADERS
     SparseMatrix.inl
     )
 
-set(poisson_SOURCES
+set(${module}_SOURCES
     CmdLineParser.cpp
     Factor.cpp
     Geometry.cpp
     MarchingCubes.cpp
-#    PlyFile.cpp
     )
 
-
-add_library(3rd_poisson STATIC ${poisson_SOURCES} ${poisson_HEADERS})
-
-set_target_properties(3rd_poisson PROPERTIES FOLDER "3rd_party")
-
-target_include_directories(3rd_poisson PRIVATE ${EASY3D_poisson_INCLUDE_DIR})
+add_3rdparty_module(3rd_${module} "${${module}_SOURCES}" "${${module}_HEADERS}")
 
 
-# may use OpenMP
-include( ../../cmake/UseOpenMP.cmake )
-
-
-if (MSVC)
-    target_compile_definitions(3rd_poisson PRIVATE
-        _CRT_SECURE_NO_WARNINGS
-        _CRT_SECURE_NO_DEPRECATE
-        )
-endif()
+if (NOT ${Easy3D_BUILD_SHARED_LIBS})
+	install(TARGETS 3rd_${module}
+			# IMPORTANT: Add the library to the "export-set"
+			EXPORT Easy3DTargets
+			LIBRARY DESTINATION "${Easy3D_INSTALL_LIB_DIR}" COMPONENT lib
+			COMPONENT dev)
+endif ()

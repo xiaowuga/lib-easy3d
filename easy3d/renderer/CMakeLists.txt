@@ -1,11 +1,8 @@
-cmake_minimum_required(VERSION 3.12)
+set(module renderer)
+set(private_dependencies)
+set(public_dependencies easy3d::core easy3d::util easy3d::fileio easy3d::algo)
 
-get_filename_component(MODULE_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-set(PROJECT_NAME "easy3d_${MODULE_NAME}")
-project(${PROJECT_NAME})
-
-
-set(${PROJECT_NAME}_HEADERS
+set(${module}_headers
         ambient_occlusion.h
         average_color_blending.h
         camera.h
@@ -28,11 +25,10 @@ set(${PROJECT_NAME}_HEADERS
         opengl_error.h
         opengl_util.h
         opengl_timer.h
-        shapes.h
+        shape.h
         read_pixel.h
-        buffers.h
+        buffer.h
         renderer.h
-        setting.h
         shader_manager.h
         shader_program.h
         shadow.h
@@ -47,7 +43,7 @@ set(${PROJECT_NAME}_HEADERS
         vertex_array_object.h
         )
 
-set(${PROJECT_NAME}_SOURCES
+set(${module}_sources
         ambient_occlusion.cpp
         average_color_blending.cpp
         camera.cpp
@@ -66,14 +62,14 @@ set(${PROJECT_NAME}_SOURCES
         manipulator.cpp
         manipulated_camera_frame.cpp
         manipulated_frame.cpp
+        opengl.cpp
         opengl_error.cpp
         opengl_util.cpp
         opengl_timer.cpp
-        shapes.cpp
+        shape.cpp
         read_pixel.cpp
-        buffers.cpp
+        buffer.cpp
         renderer.cpp
-        setting.cpp
         shader_manager.cpp
         shader_program.cpp
         shadow.cpp
@@ -88,7 +84,7 @@ set(${PROJECT_NAME}_SOURCES
         )
 
 
-set(${PROJECT_NAME}_SHADERS
+set(${module}_resources
         # points
         ../../resources/shaders/points/points_plain_color.vert
         ../../resources/shaders/points/points_plain_color.frag
@@ -186,26 +182,24 @@ set(${PROJECT_NAME}_SHADERS
         ../../resources/shaders/selection/selection_pointcloud_lasso.frag
         )
 
-add_library(${PROJECT_NAME} STATIC
-        ${${PROJECT_NAME}_SOURCES}
-        ${${PROJECT_NAME}_HEADERS}
-        ${${PROJECT_NAME}_SHADERS}
-        )
-
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER "easy3d")
-
-target_include_directories(${PROJECT_NAME} PUBLIC ${EASY3D_INCLUDE_DIR})
-target_link_libraries(${PROJECT_NAME} PUBLIC 3rd_glew easy3d_core easy3d_util easy3d_fileio easy3d_algo)
-
-target_compile_definitions(${PROJECT_NAME} PRIVATE GLEW_STATIC)
-
-if (MSVC)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE _CRT_SECURE_NO_DEPRECATE)
-endif ()
+add_module(${module} "${${module}_headers}" "${${module}_sources}" "${private_dependencies}" "${public_dependencies}")
+target_include_directories(easy3d_${module} PRIVATE ${Easy3D_THIRD_PARTY}/glew/include)
+target_compile_definitions(easy3d_${module} PRIVATE GLEW_BUILD PUBLIC GLEW_NO_GLU)
 
 
-# Alias target (recommended by policy CMP0028) and it looks nicer
-message(STATUS "Adding target: easy3d::${MODULE_NAME} (${PROJECT_NAME})")
-add_library(easy3d::${MODULE_NAME} ALIAS ${PROJECT_NAME})
-# Export as easy3d::${MODULE_NAME}
-set_property(TARGET ${PROJECT_NAME} PROPERTY EXPORT_NAME easy3d::${MODULE_NAME})
+if(WIN32 OR MSVC OR APPLE)
+    find_package(OpenGL COMPONENTS OpenGL REQUIRED)
+    message(STATUS "OpenGL library: ${OPENGL_gl_LIBRARY}")
+    target_link_libraries(easy3d_${module} PUBLIC ${OPENGL_gl_LIBRARY})
+else() # == if(UNIX AND NOT APPLE)
+    set (OpenGL_GL_PREFERENCE GLVND)
+    find_package(OpenGL COMPONENTS OpenGL GLX REQUIRED)
+    message(STATUS "OpenGL libraries: ${OPENGL_opengl_LIBRARY} ${OPENGL_glx_LIBRARY}")
+    target_link_libraries(easy3d_${module} PUBLIC ${OPENGL_opengl_LIBRARY} ${OPENGL_glx_LIBRARY})
+endif()
+
+
+install_module(${module})
+# Install glew.h to the installation directory
+install(FILES "${Easy3D_THIRD_PARTY}/glew/include/GL/glew.h"
+        DESTINATION "${Easy3D_INSTALL_INCLUDE_DIR}/3rd_party/glew/include/GL")

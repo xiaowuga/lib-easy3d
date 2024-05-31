@@ -94,14 +94,14 @@ namespace easy3d {
 		virtual ~Viewer();
 
         /**
-         * Run the viewer.
+         * @brief Run the viewer.
          * @param see_all See all contents within the screen? If true, the entire scene (i.e., all models) will be
          *      centered on the screen at a proper scale.
          */
         int run(bool see_all = true);
 
         /**
-         * Terminate the viewer.
+         * @brief Terminate the viewer.
          */
         void exit();
 
@@ -126,10 +126,19 @@ namespace easy3d {
          */
         void resize(int w, int h);
 
-        /// @brief Returns the width of the viewer.
+        /// @brief Returns the width of the viewer/window.
         int width() const { return width_; }
-        /// @brief Returns the height of the viewer.
+        /// @brief Returns the height of the viewer/window.
         int height() const { return height_; }
+        /// @brief Queries the size of the viewer/window.
+        void viewer_size(int& w, int& h) const { w = width_; h = height_; }
+
+		/// @brief Returns the width of the framebuffer, which is identical to: width() * dpi_scaling().
+		int framebuffer_width() const;
+		/// @brief Returns the height of the framebuffer, which is identical to: height() * dpi_scaling().
+		int framebuffer_height() const;
+		/// @brief Queries the size of the framebuffer.
+		void framebuffer_size(int& w, int& h) const;
 
         /**
          * @brief Sets the position of the content area of the viewer.
@@ -361,6 +370,7 @@ namespace easy3d {
 	    //@}
 
         /// @name Algorithm execution
+        //@{
         /// @brief A function that will be triggered by the shortcut 'Ctrl + E'.
         ///     This function is typically used for applying an algorithm on a model.
         std::function<bool(Viewer* viewer, Model* model)> execute_func_;

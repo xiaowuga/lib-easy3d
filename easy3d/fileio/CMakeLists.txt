@@ -1,11 +1,8 @@
-cmake_minimum_required(VERSION 3.12)
+set(module fileio)
+set(private_dependencies 3rd_lastools 3rd_rply)
+set(public_dependencies easy3d::core easy3d::util)
 
-get_filename_component(MODULE_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-set(PROJECT_NAME "easy3d_${MODULE_NAME}")
-project(${PROJECT_NAME})
-
-
-set(${PROJECT_NAME}_HEADERS
+set(${module}_headers
         image_io.h
         graph_io.h
         ply_reader_writer.h
@@ -14,11 +11,10 @@ set(${PROJECT_NAME}_HEADERS
         point_cloud_io_vg.h
         surface_mesh_io.h
         poly_mesh_io.h
-        resources.h
         translator.h
         )
 
-set(${PROJECT_NAME}_SOURCES
+set(${module}_sources
         image_io.cpp
         graph_io.cpp
         graph_io_ply.cpp
@@ -41,36 +37,11 @@ set(${PROJECT_NAME}_SOURCES
         poly_mesh_io_mesh.cpp
         poly_mesh_io_plm.cpp
         poly_mesh_io_pm.cpp
-        resources.cpp
         translator.cpp
         )
 
-
-add_library(${PROJECT_NAME} STATIC ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_HEADERS})
-
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER "easy3d")
-
-# The resources directory
-target_compile_definitions(
-        ${PROJECT_NAME}
-        PRIVATE
-        "EASY3D_RESOURCES_DIR=\"${EASY3D_ROOT}/resources\""
-)
-
-target_include_directories(${PROJECT_NAME} PUBLIC ${EASY3D_INCLUDE_DIR})
-
-set(LASTOOLS_INCLUDE_DIR ${EASY3D_THIRD_PARTY}/lastools/LASzip/src ${EASY3D_THIRD_PARTY}/lastools/LASlib/inc)
-target_include_directories(${PROJECT_NAME} PRIVATE ${LASTOOLS_INCLUDE_DIR})
-
-target_link_libraries(${PROJECT_NAME} PUBLIC easy3d_core easy3d_util 3rd_lastools 3rd_rply)
-
-if (MSVC)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE _CRT_SECURE_NO_DEPRECATE)
-endif ()
-
-
-# Alias target (recommended by policy CMP0028) and it looks nicer
-message(STATUS "Adding target: easy3d::${MODULE_NAME} (${PROJECT_NAME})")
-add_library(easy3d::${MODULE_NAME} ALIAS ${PROJECT_NAME})
-# Export as easy3d::${MODULE_NAME}
-set_property(TARGET ${PROJECT_NAME} PROPERTY EXPORT_NAME easy3d::${MODULE_NAME})
+		
+add_module(${module} "${${module}_headers}" "${${module}_sources}" "${private_dependencies}" "${public_dependencies}")
+set(LASTOOLS_INCLUDE_DIR ${Easy3D_THIRD_PARTY}/lastools/LASzip/src ${Easy3D_THIRD_PARTY}/lastools/LASlib/inc)
+target_include_directories(easy3d_${module} PRIVATE ${LASTOOLS_INCLUDE_DIR})
+install_module(${module})

@@ -33,7 +33,7 @@
 #include <easy3d/renderer/shader_program.h>
 #include <easy3d/renderer/framebuffer_object.h>
 #include <easy3d/renderer/opengl_error.h>
-#include <easy3d/renderer/shapes.h>
+#include <easy3d/renderer/shape.h>
 #include <easy3d/renderer/shader_manager.h>
 #include <easy3d/renderer/transform.h>
 #include <easy3d/renderer/drawable_points.h>
@@ -41,16 +41,14 @@
 #include <easy3d/renderer/drawable_triangles.h>
 #include <easy3d/renderer/opengl.h>
 #include <easy3d/renderer/renderer.h>
-#include <easy3d/renderer/setting.h>
 #include <easy3d/renderer/clipping_plane.h>
 #include <easy3d/renderer/manipulator.h>
-#include <easy3d/renderer/transform.h>
 
 
 const int  KERNEL_SIZE = 64;
 const int  NOISE_RES = 4;
 
-//#define SNAPSHOT_BUFFERS
+//#define SNAPSHOT_BUFFER
 
 namespace easy3d {
 
@@ -195,7 +193,7 @@ namespace easy3d {
         for (auto model : models) {
             if (model->renderer()->is_visible()) {
                 // transformation introduced by manipulation
-                const mat4 MANIP = model->manipulator()->matrix();
+                const mat4 MANIP = model->manipulator() ? model->manipulator()->matrix() : mat4::identity();
                 // needs be padded when using uniform blocks
                 const mat3 NORMAL = transform::normal_matrix(MANIP);
 
@@ -204,27 +202,22 @@ namespace easy3d {
 
                 for (auto d : model->renderer()->points_drawables()) {
                     if (d->is_visible()) {
-                        if (setting::clipping_plane)
-                            setting::clipping_plane->set_program(program);
+                        ClippingPlane::instance()->set_program(program);
                         d->gl_draw(); easy3d_debug_log_gl_error
                     }
                 }
                 for (auto d : model->renderer()->triangles_drawables()) {
                     if (d->is_visible()) {
-                        if (setting::clipping_plane) {
-                            setting::clipping_plane->set_program(program);
-                            setting::clipping_plane->set_discard_primitives(program, d->plane_clip_discard_primitive());
-                        }
+                        ClippingPlane::instance()->set_program(program);
+                        ClippingPlane::instance()->set_discard_primitives(program, d->plane_clip_discard_primitive());
                         program->set_uniform("smooth_shading", d->smooth_shading());
                         d->gl_draw(); easy3d_debug_log_gl_error
                     }
                 }
                 for (auto d : model->renderer()->lines_drawables()) {
                     if (d->is_visible()) {
-                        if (setting::clipping_plane) {
-                            setting::clipping_plane->set_program(program);
-                            setting::clipping_plane->set_discard_primitives(program, d->plane_clip_discard_primitive());
-                        }
+                        ClippingPlane::instance()->set_program(program);
+                        ClippingPlane::instance()->set_discard_primitives(program, d->plane_clip_discard_primitive());
                         d->gl_draw(); easy3d_debug_log_gl_error
                     }
                 }
@@ -234,7 +227,7 @@ namespace easy3d {
         program->release();
         geom_fbo_->release(); easy3d_debug_log_gl_error;
 
-#ifdef SNAPSHOT_BUFFERS
+#ifdef SNAPSHOT_BUFFER
         geom_fbo_->snapshot_color_ppm(0, "ssao_gPosition.ppm");
         geom_fbo_->snapshot_color_ppm(1, "ssao_gNormal.ppm");
 #endif
@@ -274,14 +267,14 @@ namespace easy3d {
         program->bind_texture("gNormal", geom_fbo_->color_texture(1), 1);		// normal
         program->bind_texture("texNoise", noise_texture_, 2); easy3d_debug_log_gl_error
 
-        shapes::draw_full_screen_quad(ShaderProgram::POSITION, ShaderProgram::TEXCOORD, 0.0f);
+        shape::draw_full_screen_quad(ShaderProgram::POSITION, ShaderProgram::TEXCOORD, 0.0f);
         easy3d_debug_log_gl_error;
 
         program->release_texture(); easy3d_debug_log_gl_error
         program->release(); easy3d_debug_log_gl_error
         ssao_fbo_->release();
 
-#ifdef SNAPSHOT_BUFFERS
+#ifdef SNAPSHOT_BUFFER
         ssao_fbo_->snapshot_color_ppm(0, "ssao_ssao.ppm");
 #endif
      }
@@ -306,12 +299,12 @@ namespace easy3d {
 
         program->bind(); easy3d_debug_log_gl_error
         program->bind_texture("ssaoInput", ssao_fbo_->color_texture(0), 0);
-        shapes::draw_full_screen_quad(ShaderProgram::POSITION, ShaderProgram::TEXCOORD, 0.0f);
+        shape::draw_full_screen_quad(ShaderProgram::POSITION, ShaderProgram::TEXCOORD, 0.0f);
         program->release_texture(); easy3d_debug_log_gl_error
         program->release(); easy3d_debug_log_gl_error
         ssao_fbo_->release();
 
-#ifdef SNAPSHOT_BUFFERS
+#ifdef SNAPSHOT_BUFFER
         ssao_fbo_->snapshot_color_ppm(1, "ssao_blur.ppm");
 #endif
     }

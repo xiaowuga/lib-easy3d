@@ -687,7 +687,7 @@ namespace easy3d {
       speed (default is 1 second).
 
       See also interpolateToFitScene() and interpolateToZoomOnPixel(). */
-    void Camera::interpolateTo(const Frame &fr, double duration) {
+    void Camera::interpolateTo(const Frame &fr, float duration) {
         if (interpolationKfi_->is_interpolation_started())
             interpolationKfi_->stop_interpolation();
 
@@ -1463,12 +1463,14 @@ namespace easy3d {
 	}
 
 
-	/*First of all, let's assume that we're going to store the frustum values in a variable like this:
-	float frustum[6][4];
-	That's six sets of four numbers (six planes, each with an A, B, C, and D value).
-	*/
+	/**
+	 * Returns the 6 plane equations of the Camera frustum. This is another implementation of getFrustumPlanesCoefficients(...).
+	 */
 	void Camera::getFrustumPlanesCoefficients2(float frustum[6][4]) const
 	{
+        // First of all, let's assume that we're going to store the frustum values in a variable like this:
+        // float frustum[6][4];
+        // That's six sets of four numbers (six planes, each with an A, B, C, and D value).
 		const mat4& clip = modelViewProjectionMatrix();
 
 		/* Extract the numbers for the LEFT plane */

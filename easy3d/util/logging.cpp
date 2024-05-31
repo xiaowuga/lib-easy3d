@@ -28,8 +28,19 @@
 #include <easy3d/util/file_system.h>
 #include <easy3d/util/stack_tracer.h>
 
+#include <3rd_party/easyloggingpp/easylogging++.cc>
 
+
+#if 1
 INITIALIZE_EASYLOGGINGPP
+#else // the above macro is equivalent to the following code:
+namespace el {
+    namespace base {
+        el::base::type::StoragePointer elStorage(new el::base::Storage(el::LogBuilderPtr(new el::base::DefaultLogBuilder())));
+    }
+    el::base::debug::CrashHandler elCrashHandler(ELPP_USE_DEF_CRASH_HANDLER);
+}
+#endif
 
 
 namespace easy3d
@@ -86,7 +97,7 @@ namespace easy3d
         }
 
 
-        void crash_sandler(int sig) {
+        void crash_handler(int sig) {
             std::stringstream ss;
             ss << crash_reason(sig) << "\n"
                << stacktrace_failure_header() << "\n"
@@ -100,7 +111,12 @@ namespace easy3d
         }
 
 
-        void initialize(bool info_to_stdout, bool warning_to_stdout, bool error_to_stdout, const std::string &log_file, int verbosity_threshold)
+        void initialize(bool info_to_stdout,
+                        bool warning_to_stdout,
+                        bool error_to_stdout,
+                        bool verbose_to_stdcout,
+                        const std::string &log_file,
+                        int verbosity_threshold)
         {
             if (logging_initialized) {
                 LOG(WARNING) << "logging has already been initialized";
@@ -142,7 +158,7 @@ namespace easy3d
                         output << "\n\n";
                     output << "================================================================= program started ...\n";
                     output.close();
-                    log_file_name = full_path_log_file;
+                    log_file_name = file_system::convert_to_native_style(full_path_log_file);
                 }
             }
 
@@ -152,7 +168,7 @@ namespace easy3d
             el::Configurations defaultConf;
             defaultConf.setToDefault();
             // Values are always std::string
-            defaultConf.setGlobally(el::ConfigurationType::Format, "%levshort %datetime{%d/%M/%Y %h:%m:%s.%g} %fbase:%line] %msg");
+            defaultConf.setGlobally(el::ConfigurationType::Format, "%levshort %datetime{%d/%M/%Y %H:%m:%s.%g} %fbase:%line] %msg");
 
             if (!log_file_name.empty()) {
                 defaultConf.setGlobally(el::ConfigurationType::Filename, log_file_name);
@@ -165,6 +181,7 @@ namespace easy3d
             defaultConf.set(el::Level::Warning, el::ConfigurationType::ToStandardOutput, warning_to_stdout ? "true" : "false");
             defaultConf.set(el::Level::Error, el::ConfigurationType::ToStandardOutput, error_to_stdout ? "true" : "false");
             defaultConf.set(el::Level::Fatal, el::ConfigurationType::ToStandardOutput, error_to_stdout ? "true" : "false");
+            defaultConf.set(el::Level::Verbose, el::ConfigurationType::ToStandardOutput, verbose_to_stdcout ? "true" : "false");
 
             // If you wish to have a configuration for existing and future loggers, you can use the following.
             // This is useful when you are working on fairly large scale, or using a third-party library that is
@@ -174,11 +191,12 @@ namespace easy3d
 
             el::Loggers::addFlag(el::LoggingFlag::ColoredTerminalOutput);
             el::Loggers::addFlag(el::LoggingFlag::LogDetailedCrashReason);
+			el::Loggers::addFlag(el::LoggingFlag::DisableApplicationAbortOnFatalLog);
 
             // default logger uses default configurations
             el::Loggers::reconfigureLogger("default", defaultConf);
 
-            el::Helpers::setCrashHandler(crash_sandler);
+            el::Helpers::setCrashHandler(crash_handler);
 
             // allow all levels of verbose messages to be logged into the log file (but not shown on UI).
             el::Loggers::setVerboseLevel(verbosity_threshold);

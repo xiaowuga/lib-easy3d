@@ -480,26 +480,39 @@ namespace easy3d {
     }
 
 
+    /// Output stream support for GenericPlane.
     template<typename FT>
     inline
     std::ostream &operator<<(std::ostream &os, const GenericPlane<FT> &plane) {
         return os << plane[0] << ' ' << plane[1] << ' ' << plane[2] << ' ' << plane[3];
     }
 
+    /// Input stream support for GenericPlane.
     template<typename FT>
     inline
     std::istream &operator>>(std::istream &is, GenericPlane<FT> &plane) {
         return is >> plane[0] >> plane[1] >> plane[2] >> plane[3];
     }
 
-    template<typename FT>
-    inline
-    bool intersect(const GenericPlane<FT> &plane1, const GenericPlane<FT> &plane2, const GenericPlane<FT> &plane3,
-                   typename GenericPlane<FT>::Point3 &point) {
-        typename GenericPlane<FT>::Line3 line;
-        if (plane1.intersect(plane2, line))
-            return plane3.intersect(line, point);
-        return false;
+
+    namespace geom {
+        /**
+         * Check if three planes intersect. Returns false if one of the planes is parallel to any of the others.
+         * \param plane1 The first plane.
+         * \param plane2 The second plane.
+         * \param plane3 The third plane.
+         * \param point The intersecting point. \note The intersecting point is valid only if the function returns true.
+         * \return true if the three planes intersect at a point.
+         */
+        template<typename FT>
+        inline
+        bool intersect(const GenericPlane<FT> &plane1, const GenericPlane<FT> &plane2, const GenericPlane<FT> &plane3,
+                       typename GenericPlane<FT>::Point3 &point) {
+            typename GenericPlane<FT>::Line3 line;
+            if (plane1.intersect(plane2, line))
+                return plane3.intersect(line, point);
+            return false;
+        }
     }
 
 }

@@ -31,10 +31,10 @@
 #include <easy3d/renderer/opengl_error.h>
 #include <easy3d/renderer/shader_manager.h>
 #include <easy3d/renderer/shader_program.h>
-#include <easy3d/renderer/shapes.h>
-#include <easy3d/renderer/setting.h>
+#include <easy3d/renderer/shape.h>
 #include <easy3d/renderer/transform.h>
 #include <easy3d/renderer/clipping_plane.h>
+#include <easy3d/util/setting.h>
 
 
 namespace easy3d {
@@ -119,10 +119,11 @@ namespace easy3d {
                 program->set_uniform("per_vertex_color", d->coloring_method() != State::UNIFORM_COLOR && d->color_buffer());
                 program->set_uniform("default_color", d->color());
                 program->set_uniform("selected", d->is_selected());
-                if (setting::clipping_plane) {
-                    setting::clipping_plane->set_program(program);
-                    setting::clipping_plane->set_discard_primitives(program, d->plane_clip_discard_primitive());
-                }
+                program->set_uniform("highlight_color", setting::highlight_color);
+
+                ClippingPlane::instance()->set_program(program);
+                ClippingPlane::instance()->set_discard_primitives(program, d->plane_clip_discard_primitive());
+
                 d->gl_draw();
             }
         }
@@ -180,7 +181,7 @@ namespace easy3d {
         program->set_uniform("BackgroundColor", bkg_color_);
         program->bind_texture("ColorTex0", fbo_->color_texture(0), 0);
         program->bind_texture("ColorTex1", fbo_->color_texture(1), 1);
-        shapes::draw_full_screen_quad(ShaderProgram::POSITION, ShaderProgram::TEXCOORD, 0.0f);
+        shape::draw_full_screen_quad(ShaderProgram::POSITION, ShaderProgram::TEXCOORD, 0.0f);
         program->release_texture();
         program->release();
 

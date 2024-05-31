@@ -1,20 +1,21 @@
-cmake_minimum_required(VERSION 3.12)
+get_filename_component(module ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 
-project(3rd_triangle)
+set(${module}_HEADERS
+		triangle.h
+		)
 
-add_library(3rd_triangle STATIC triangle.h triangle.c)
+set(${module}_SOURCES
+		triangle.c
+		)
 
-set_target_properties(3rd_triangle PROPERTIES FOLDER "3rd_party")
-
-#Set properties on a target.
-#We use this here to set -DTETLIBRARY for when compiling the
-#library
-set_target_properties(3rd_triangle PROPERTIES "COMPILE_DEFINITIONS" TRILIBRARY)
+add_3rdparty_module(3rd_${module} "${${module}_SOURCES}" "${${module}_HEADERS}")
+target_compile_definitions(3rd_${module} PRIVATE TRILIBRARY)
 
 
-if (MSVC)
-    target_compile_definitions(3rd_triangle PRIVATE
-        _CRT_SECURE_NO_WARNINGS
-        _CRT_SECURE_NO_DEPRECATE
-        )
-endif()
+if (NOT ${Easy3D_BUILD_SHARED_LIBS})
+	install(TARGETS 3rd_triangle
+			# IMPORTANT: Add the library to the "export-set"
+			EXPORT Easy3DTargets
+			LIBRARY DESTINATION "${Easy3D_INSTALL_LIB_DIR}" COMPONENT lib
+			COMPONENT dev)
+endif ()

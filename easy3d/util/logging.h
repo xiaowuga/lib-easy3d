@@ -28,18 +28,20 @@
 #define EASY3D_UTIL_LOGGING_H
 
 
-#include <3rd_party/easyloggingpp/src/easylogging++.h>
+#include <3rd_party/easyloggingpp/easylogging++.h>
 
 
-// to have LOG_IF_EVERY_N
+/// To have LOG_IF_EVERY_N
+/// Example: LOG_IF_EVERY_N(5, i < 20, WARNING) << "Log if (i < 10) for every 5, i = " << i << ", " << COUNTER;
 #define LOG_IF_EVERY_N(n, condition, LEVEL)  if (condition) \
     CLOG_EVERY_N(n, LEVEL, ELPP_CURR_FILE_LOGGER_ID)
 
-// to have LOG_IF_FIRST_N
+/// To have LOG_IF_FIRST_N
+/// Example: LOG_IF_FIRST_N(5, i < 20, WARNING) << "Log if (i < 10) for first 5, i = " << i << ", " << COUNTER;
 #define LOG_IF_FIRST_N(n, condition, LEVEL)  if (condition) \
 CLOG_N_TIMES(n, LEVEL, ELPP_CURR_FILE_LOGGER_ID)
 
-// for logging the counter number
+/// For logging the counter number
 #define COUNTER     ELPP_COUNTER->hitCounts()
 
 
@@ -51,24 +53,26 @@ namespace easy3d {
 
         /**
          * @brief Initializes the logging module.
-         * @param info_to_stdout \c ture to log messages at a the INFO level to standard output.
-         * @param warning_to_stdcout \c ture to log messages at a the WARNING level to standard output.
-         * @param error_to_stdcout \c ture to log messages at a the ERROR (including FATAL) level to standard output.
-         * @param log_file A string specifying the full path to the log file.
-         *      If \p log_file is a valid path: log messages will be written to this file in addition to stderr.
-         *      If \p log_file is empty: no log file will be created.
-         *      If \p log_file is "default": creat a log file with a title in the form "ApplicationName.log" next to
-         *      the executable file.
+         * @param info_to_stdout \c true to log messages at a the \c INFO level to standard output.
+         * @param warning_to_stdcout \c true to log messages at a the \c WARNING level to standard output.
+         * @param error_to_stdcout \c true to log messages at a the \c ERROR (including \c FATAL) level to standard output.
+         * @param verbose_to_stdcout \c true to log messages at a the \c ERROR (including \c FATAL) level to standard output.
+		 * @param log_file A string specifying the name of log file. Three different values are accepted:
+         *    - "": an empty string, indicating that no log file will be created.
+		 *    - "default": create a log file with a title in the form "AppName.log" next to the executable file.
+		 *    - any non-empty string: (if it is a valid path) a log file with the same name will be created and log
+         *      messages will be written to this file.
          * @param verbosity_threshold A \c VLOG(level) with \c level <= \c verbosity_threshold will be written into the
-         *      log file (if specified). Value must be in the range [0, 9]. Default is 0 (
+         *      log file (if specified). Value must be in the range [0, 9]. Default is 0.
          * @note This initialization is optional. If not called, log messages will be written to standard output only.
          */
         void initialize(
                 bool info_to_stdout = false,
                 bool warning_to_stdcout = true,
                 bool error_to_stdcout = true,
-                const std::string &log_file = "",
-                int verbosity_threshold = 0
+                bool verbose_to_stdcout = false,
+                const std::string &log_file = "default",
+                int verbosity_threshold = 9
         );
 
         /// Returns whether the logging has been initialized.

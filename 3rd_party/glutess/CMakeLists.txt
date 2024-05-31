@@ -1,9 +1,10 @@
-cmake_minimum_required(VERSION 3.12)
+get_filename_component(module ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 
-project(3rd_glutess)
+set(${module}_HEADERS
+		glutess.h
+		)
 
-add_library(3rd_glutess STATIC
-        glutess.h
+set(${module}_SOURCES
         source/dict-list.h
         source/dict.c
         source/dict.h
@@ -15,8 +16,8 @@ add_library(3rd_glutess STATIC
         source/mesh.h
         source/normal.c
         source/normal.h
-        source/priorityq-heap.c
-        source/priorityq-heap.h
+        #source/priorityq-heap.c
+        #source/priorityq-heap.h
         source/priorityq-sort.h
         source/priorityq.c
         source/priorityq.h
@@ -30,6 +31,13 @@ add_library(3rd_glutess STATIC
         source/tessmono.h
         )
 
-set_target_properties(3rd_glutess PROPERTIES FOLDER "3rd_party")
+add_3rdparty_module(3rd_${module} "${${module}_SOURCES}" "${${module}_HEADERS}")
+target_include_directories(3rd_${module} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_include_directories(3rd_glutess PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+if (NOT ${Easy3D_BUILD_SHARED_LIBS})
+	install(TARGETS 3rd_${module}
+			# IMPORTANT: Add the library to the "export-set"
+			EXPORT Easy3DTargets
+			LIBRARY DESTINATION "${Easy3D_INSTALL_LIB_DIR}" COMPONENT lib
+			COMPONENT dev)
+endif ()

@@ -1,52 +1,68 @@
-cmake_minimum_required(VERSION 3.12)
+set(module util)
 
-get_filename_component(MODULE_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-set(PROJECT_NAME "easy3d_${MODULE_NAME}")
-project(${PROJECT_NAME})
+find_package(Threads REQUIRED)
+set(private_dependencies 3rd_backward)
+set(public_dependencies Threads::Threads)
 
-
-set(${PROJECT_NAME}_HEADERS
+set(${module}_headers
         console_style.h
-        dialogs.h
+        dialog.h
         file_system.h
+        initializer.h
         line_stream.h
         logging.h
         progress.h
+        resource.h
+        setting.h
         stack_tracer.h
         stop_watch.h
         string.h
         timer.h
         tokenizer.h
+        version.cpp
         )
 
-set(${PROJECT_NAME}_SOURCES
+set(${module}_sources
         console_style.cpp
-        dialogs.cpp
+        dialog.cpp
         file_system.cpp
+        initializer.cpp
         logging.cpp
         progress.cpp
+        resource.cpp
+        setting.cpp
         stack_tracer.cpp
         stop_watch.cpp
         string.cpp
+        version.cpp
         )
 
-	
-add_library(${PROJECT_NAME} STATIC ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_HEADERS} )
+add_module(${module} "${${module}_headers}" "${${module}_sources}" "${private_dependencies}" "${public_dependencies}")
 
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER "easy3d")
+# The resources directory
+target_compile_definitions(easy3d_${module}
+        PRIVATE
+        "Easy3D_MAJOR_VERSION=${Easy3D_MAJOR_VERSION}"
+        "Easy3D_MINOR_VERSION=${Easy3D_MINOR_VERSION}"
+        "Easy3D_PATCH_VERSION=${Easy3D_PATCH_VERSION}"
+        "Easy3D_VERSION=\"${Easy3D_VERSION}\""
+        PUBLIC
+        ELPP_FEATURE_ALL
+        ELPP_STL_LOGGING
+        ELPP_THREAD_SAFE
+        ELPP_NO_DEFAULT_LOG_FILE
+        ELPP_DISABLE_DEFAULT_CRASH_HANDLING
+        "$<BUILD_INTERFACE:Easy3D_RESOURCE_DIR=\"${Easy3D_ROOT}/resources\">"
+        "$<INSTALL_INTERFACE:Easy3D_RESOURCE_DIR=\"${Easy3D_INSTALL_RESOURCE_DIR}\">"
+        )
 
-target_include_directories(${PROJECT_NAME} PUBLIC ${EASY3D_INCLUDE_DIR})
+if (Easy3D_BUILD_SHARED_LIBS)
+    target_compile_definitions(easy3d_${module}
+            PUBLIC ELPP_AS_DLL
+            PRIVATE ELPP_EXPORT_SYMBOLS)
+endif ()
 
-target_link_libraries(${PROJECT_NAME} PUBLIC 3rd_backward 3rd_easyloggingpp)
-
-
-if (MSVC)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE _CRT_SECURE_NO_WARNINGS _CRT_SECURE_NO_DEPRECATE)
-endif()
-
-
-# Alias target (recommended by policy CMP0028) and it looks nicer
-message(STATUS "Adding target: easy3d::${MODULE_NAME} (${PROJECT_NAME})")
-add_library(easy3d::${MODULE_NAME} ALIAS ${PROJECT_NAME})
-# Export as easy3d::${MODULE_NAME}
-set_property(TARGET ${PROJECT_NAME} PROPERTY EXPORT_NAME easy3d::${MODULE_NAME})
+install_module(${module})
+# Install easylogging++.h to the installation directory
+install(FILES "${Easy3D_THIRD_PARTY}/easyloggingpp/easylogging++.h"
+        DESTINATION "${Easy3D_INSTALL_INCLUDE_DIR}/3rd_party/easyloggingpp")

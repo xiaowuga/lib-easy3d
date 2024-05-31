@@ -8,17 +8,16 @@
  * The original code was distributed under the GNU GPL license.
  ********************************************************************/
 
-
 #include <easy3d/util/progress.h>
 
 #include <cassert>
-#include <algorithm>
+#include <algorithm>	// for std::min and std::max
 
 
 namespace easy3d {
 
     //  \cond
-    namespace details {
+    namespace internal {
 
         class Progress {
         public:
@@ -73,11 +72,11 @@ namespace easy3d {
 
 
     ProgressClient::ProgressClient() {
-        details::Progress::instance()->set_client(this);
+        internal::Progress::instance()->set_client(this);
     }
 
     void ProgressClient::cancel() {
-        details::Progress::instance()->cancel();
+        internal::Progress::instance()->cancel();
     }
 
     //_________________________________________________________
@@ -90,17 +89,17 @@ namespace easy3d {
             , quiet_(quiet)
             , update_viewer_(update_viewer)
     {
-        details::Progress::instance()->push();
+        internal::Progress::instance()->push();
         if (!quiet_) {
-            details::Progress::instance()->notify(0, update_viewer_);
+            internal::Progress::instance()->notify(0, update_viewer_);
         }
     }
 
 
     ProgressLogger::~ProgressLogger() {
         // one more notification to make sure the progress reaches its end
-        details::Progress::instance()->notify(100, update_viewer_);
-        details::Progress::instance()->pop();
+        internal::Progress::instance()->notify(100, update_viewer_);
+        internal::Progress::instance()->pop();
     }
 
 
@@ -117,7 +116,7 @@ namespace easy3d {
 
 
     bool ProgressLogger::is_canceled() const {
-        return details::Progress::instance()->is_canceled();
+        return internal::Progress::instance()->is_canceled();
     }
 
 
@@ -132,9 +131,29 @@ namespace easy3d {
         if (percent != cur_percent_) {
             cur_percent_ = percent;
             if (!quiet_) {
-                details::Progress::instance()->notify(std::min<std::size_t>(cur_percent_, 100), update_viewer_);
+                internal::Progress::instance()->notify(std::min<std::size_t>(cur_percent_, 100), update_viewer_);
             }
         }
     }
 
+
+    void print_progress(float percentage) {
+        static const int width = 60;
+        const int lpad = static_cast<int>(percentage * width);
+        const int rpad = width - lpad;
+        const int value = static_cast<int>(percentage * 100);
+#if 1
+        // The string in the square brackets has two parts; left and right.
+        // The left part consists of lpad characters of the filling string printed using the %.*s specifier,
+        // while the right part consists of rpad length of a space left-padded string which we chose to be empty ""
+        // so that we only print rpad spaces using the %*s specifier.
+        static const std::string filling_str(width, '|');;
+        printf("\r%3d%% [%.*s%*s]", value, lpad, filling_str.data(), rpad, "");
+        fflush(stdout);
+#else
+        // explicitly construct filling and padding strings. This might be less efficient.
+        printf("\r%3d%% [%s%s] ", value, std::string(lpad, '|').c_str(), std::string(rpad, '-').c_str());
+        fflush(stdout);
+#endif
+    }
 }

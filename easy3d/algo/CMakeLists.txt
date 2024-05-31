@@ -1,12 +1,9 @@
-cmake_minimum_required(VERSION 3.12)
+set(module algo)
+set(private_dependencies 3rd_poisson 3rd_ransac 3rd_triangle 3rd_tetgen 3rd_kdtree 3rd_glutess 3rd_opcode)
+set(public_dependencies easy3d::core easy3d::util easy3d::kdtree)
 
-get_filename_component(MODULE_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-set(PROJECT_NAME "easy3d_${MODULE_NAME}")
-project(${PROJECT_NAME})
-
-
-set(${PROJECT_NAME}_HEADERS
-        convex_hull.h
+set(${module}_headers
+        collider.h
         delaunay.h
         delaunay_2d.h
         delaunay_3d.h
@@ -41,8 +38,8 @@ set(${PROJECT_NAME}_HEADERS
         triangle_mesh_kdtree.h
         )
 
-set(${PROJECT_NAME}_SOURCES
-        convex_hull.cpp
+set(${module}_sources
+        collider.cpp
         delaunay.cpp
         delaunay_2d.cpp
         delaunay_3d.cpp
@@ -77,29 +74,14 @@ set(${PROJECT_NAME}_SOURCES
         triangle_mesh_kdtree.cpp
         )
 
-
-add_library(${PROJECT_NAME} STATIC ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_HEADERS})
-
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER "easy3d")
-
-target_include_directories(${PROJECT_NAME} PUBLIC ${EASY3D_INCLUDE_DIR})
-target_include_directories(${PROJECT_NAME} PRIVATE ${EASY3D_THIRD_PARTY}/ransac)
-
-target_link_libraries(${PROJECT_NAME} PUBLIC easy3d_core easy3d_util easy3d_kdtree 3rd_poisson 3rd_ransac 3rd_triangle 3rd_tetgen 3rd_glutess)
-
-set(EIGEN_SOURCE_DIR ${EASY3D_THIRD_PARTY}/eigen)
-target_include_directories(${PROJECT_NAME} PRIVATE ${EIGEN_SOURCE_DIR})
+add_module(${module} "${${module}_headers}" "${${module}_sources}" "${private_dependencies}" "${public_dependencies}")
+target_include_directories(easy3d_${module} PRIVATE ${Easy3D_THIRD_PARTY}/eigen ${Easy3D_THIRD_PARTY}/ransac)
 
 # It's "Boost", not "BOOST" or "boost". Case matters.
 find_package(Boost)
 if (Boost_FOUND)
-    target_include_directories(${PROJECT_NAME} PRIVATE ${Boost_INCLUDE_DIRS})
-    target_compile_definitions(${PROJECT_NAME} PRIVATE HAS_BOOST)
+    target_include_directories(easy3d_${module} PRIVATE ${Boost_INCLUDE_DIRS})
+    target_compile_definitions(easy3d_${module} PRIVATE HAS_BOOST)
 endif ()
 
-
-# Alias target (recommended by policy CMP0028) and it looks nicer
-message(STATUS "Adding target: easy3d::${MODULE_NAME} (${PROJECT_NAME})")
-add_library(easy3d::${MODULE_NAME} ALIAS ${PROJECT_NAME})
-# Export as easy3d::${MODULE_NAME}
-set_property(TARGET ${PROJECT_NAME} PROPERTY EXPORT_NAME easy3d::${MODULE_NAME})
+install_module(${module})

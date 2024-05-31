@@ -29,13 +29,11 @@
 #include <easy3d/util/logging.h>
 
 #include <fstream>
-#include <cassert>
 #include <algorithm>
 #include <cstring>
 #include <ctime>	    // for get_time_string()
 
 #ifdef WIN32
-#include <Windows.h>
 #include <io.h>
 #include <direct.h>   // for _mkdir
 #include <sys/stat.h> // for _stat64
@@ -215,7 +213,7 @@ namespace easy3d {
             // When NULL is passed to GetModuleHandle, the handle of the exe itself is returned
             HMODULE hModule = GetModuleHandle(nullptr);
             if (hModule) {
-                GetModuleFileNameA(hModule, path, MAX_PATH);
+                GetModuleFileName(hModule, path, MAX_PATH);
                 return path;
             }
     #elif defined (__APPLE__)
@@ -419,7 +417,7 @@ namespace easy3d {
             return false;
         }
 
-        namespace details {
+        namespace internal {
             /** Helper to iterate over elements of a path (including Windows' root, if any). **/
             class PathIterator {
             public:
@@ -497,7 +495,7 @@ namespace easy3d {
             }
 
             // 3
-            details::PathIterator itFrom(from), itTo(to);
+            internal::PathIterator itFrom(from), itTo(to);
             // Iterators may point to Windows roots. As we tested they are equal, there is no need to ++itFrom and ++itTo.
             // However, if we got an Unix root, we must add it to the result.
             std::string res(root == "/" ? "/" : "");

@@ -65,6 +65,10 @@ namespace easy3d {
         bool update_viewer_;
     };
 
+    /// A simple progress indicator for console applications. Given percentage = 0.75, the output looks like
+    ///     75% [||||||||||||||||||||||||||||||||||||||||||               ]
+    void print_progress(float percentage);
+
 }   // namespace easy3d
 
 
